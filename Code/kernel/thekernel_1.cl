@@ -27,11 +27,11 @@ __kernel void thekernel(__global float4*    color,                              
   float         dt                = parameter[4];                               // Simulation time step [s].
 
   // APPLYING GROUND CONSTRAINTS:
-  if (p.z <= 0.0f)
-  {
-    v = -v;                                                                     // Constraining velocity...
-    a = -a;                                                                     // Constraining acceleration...
-  }
+  //if (p.z <= 0.0f)
+  //{
+  //  v = -v;                                                                     // Constraining velocity...
+  //  a = -a;                                                                     // Constraining acceleration...
+  //}
   
   // COMPUTING NEW POSITION:
   p_new = p + v*dt + 0.5f*a*dt*dt;                                              // Computing Taylor's approximation...

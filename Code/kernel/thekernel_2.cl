@@ -113,7 +113,7 @@ __kernel void thekernel(__global float4*    color,                              
   // APPLYING GROUND CONSTRAINTS:
   if (p_int.z <= 0.0f)
   {
-    a_new = -a_new;                                                             // Constraining acceleration...
+    a_new = (float4)(0.0f, 0.0f, 0.0f ,1.0f);                                   // Constraining acceleration...
   }
 
   // COMPUTING NEW VELOCITY:
@@ -122,7 +122,7 @@ __kernel void thekernel(__global float4*    color,                              
   // APPLYING GROUND CONSTRAINTS:
   if (p_int.z <= 0.0f)
   {
-    v_new = -v_new;                                                             // Constraining velocity...
+    v_new = (float4)(0.0f, 0.0f, 0.0f ,1.0f);                                   // Constraining velocity...
   }
 
   // FIXING PROJECTIVE SPACE:
