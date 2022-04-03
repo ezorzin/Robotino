@@ -2,20 +2,15 @@
 
 __kernel void thekernel(__global float4*    color,                              // Color.
                         __global float4*    position,                           // Position.
-                        __global float4*    position_int,                       // Position (intermediate).
                         __global float4*    velocity,                           // Velocity.
-                        __global float4*    velocity_int,                       // Velocity (intermediate).
                         __global float4*    acceleration,                       // Acceleration.
-                        __global float4*    gravity,                            // Gravity.
-                        __global float*     stiffness,                          // Stiffness.
+                        __global float4*    position_int,                       // Position (intermediate).
+                        __global float4*    velocity_int,                       // Velocity (intermediate).
                         __global float*     resting,                            // Resting distance.
-                        __global float*     friction,                           // Friction.
-                        __global float*     mass,                               // Mass.
                         __global int*       central,                            // Node.
                         __global int*       nearest,                            // Neighbour.
                         __global int*       offset,                             // Offset.
-                        __global int*       freedom,                            // Freedom flag.
-                        __global float*     dt_simulation)                      // Simulation time step.
+                        __global float*     parameter)                          // Parameter array.
 {
   ////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////// INDEXES ///////////////////////////////////
@@ -40,31 +35,23 @@ __kernel void thekernel(__global float4*    color,                              
   float4        a_new             = (float4)(0.0f, 0.0f, 0.0f, 1.0f);           // Central node acceleration (new).
   float4        v_est             = (float4)(0.0f, 0.0f, 0.0f, 1.0f);           // Central node velocity (estimation).
   float4        a_est             = (float4)(0.0f, 0.0f, 0.0f, 1.0f);           // Central node acceleration (estimation).
-  float         m                 = mass[n];                                    // Central node mass.
-  float4        g                 = gravity[0];                                 // Central node gravity field.
-  float         B                 = friction[0];                                // Central node friction.
-  float         fr                = freedom[n];                                 // Central node freedom flag.
+  float         g                 = parameter[0];                               // Central node gravity field.
+  float         m                 = parameter[1];                               // Central node mass.
+  float         K                 = parameter[2];                               // Neighbour link stiffness.
+  float         B                 = parameter[3];                               // Central node friction.
+  float         dt                = parameter[4];                               // Simulation time step [s].
   float4        Fe                = (float4)(0.0f, 0.0f, 0.0f, 1.0f);           // Central node elastic force.  
   float4        Fv                = (float4)(0.0f, 0.0f, 0.0f, 1.0f);           // Central node viscous force.
   float4        Fv_est            = (float4)(0.0f, 0.0f, 0.0f, 1.0f);           // Central node viscous force (estimation).
-  float4        Fg                = (float4)(0.0f, 0.0f, 0.0f, 1.0f);           // Central node gravitational force. 
+  float4        Fg                = (float4)(0.0f, 0.0f, -m*g, 1.0f);           // Central node gravitational force. 
   float4        F                 = (float4)(0.0f, 0.0f, 0.0f, 1.0f);           // Central node total force.
   float4        F_new             = (float4)(0.0f, 0.0f, 0.0f, 1.0f);           // Central node total force (new).
   float4        neighbour         = (float4)(0.0f, 0.0f, 0.0f, 1.0f);           // Neighbour node position.
   float4        link              = (float4)(0.0f, 0.0f, 0.0f, 1.0f);           // Neighbour link.
   float4        D                 = (float4)(0.0f, 0.0f, 0.0f, 1.0f);           // Neighbour displacement.
   float         R                 = 0.0f;                                       // Neighbour link resting length.
-  float         K                 = 0.0f;                                       // Neighbour link stiffness.
   float         S                 = 0.0f;                                       // Neighbour link strain.
   float         L                 = 0.0f;                                       // Neighbour link length.
-  float         dt                = dt_simulation[0];                           // Simulation time step [s].
-
-  float         K_gauss           = 0.0f;                                       // Gaussian curvature.
-  float         area              = 0.0f;                                       // Laplace-Beltrami area.
-  float         theta             = 0.0f;                                       // Laplace-Beltrami angle.
-  float3        link_PA           = (float3)(0.0f, 0.0f, 0.0f);                 // Laplace_Beltrami 1st edge.
-  float3        link_PB           = (float3)(0.0f, 0.0f, 0.0f);                 // Laplace_Beltrami 2nd edge.
-  float3        link_PB_last      = (float3)(0.0f, 0.0f, 0.0f);                 // Laplace-Beltrami last edge.
 
   // COMPUTING STRIDE MINIMUM INDEX:
   if (i == 0)
@@ -76,8 +63,6 @@ __kernel void thekernel(__global float4*    color,                              
     j_min = offset[i - 1];                                                      // Setting stride minimum (all others)...
   }
 
-  theta = 0.0f;
-
   // COMPUTING ELASTIC FORCE:
   for (j = j_min; j < j_max; j++)
   {
@@ -85,7 +70,6 @@ __kernel void thekernel(__global float4*    color,                              
     neighbour = position_int[k];                                                // Getting neighbour position...
     link = neighbour - p_int;                                                   // Getting neighbour link vector...
     R = resting[j];                                                             // Getting neighbour link resting length...
-    K = stiffness[j];                                                           // Getting neighbour link stiffness...
     L = length(link);                                                           // Computing neighbour link length...
     S = L - R;                                                                  // Computing neighbour link strain...
     D = S*normalize(link);                                                      // Computing neighbour link displacement...
@@ -108,7 +92,6 @@ __kernel void thekernel(__global float4*    color,                              
   }
 
   // COMPUTING TOTAL FORCE:
-  Fg = m*g;                                                                     // Computing node gravitational force...
   Fv = -B*v_int;                                                                // Computing node viscous force...
   F = Fg + Fe + Fv;                                                             // Computing total node force...
 
@@ -127,19 +110,19 @@ __kernel void thekernel(__global float4*    color,                              
   // COMPUTING NEW ACCELERATION:
   a_new = F_new/m;                                                              // Computing acceleration...
 
-  // APPLYING FREEDOM CONSTRAINTS:
-  if (fr == 0)
+  // APPLYING GROUND CONSTRAINTS:
+  if (p_int.z <= 0.0f)
   {
-    a_new = (float4)(0.0f, 0.0f, 0.0f, 1.0f);                                   // Constraining acceleration...
+    a_new = -a_new;                                                             // Constraining acceleration...
   }
 
   // COMPUTING NEW VELOCITY:
   v_new = v + 0.5f*(a + a_new)*dt;                                              // Computing velocity...
 
-  // APPLYING FREEDOM CONSTRAINTS:
-  if (fr == 0)
+  // APPLYING GROUND CONSTRAINTS:
+  if (p_int.z <= 0.0f)
   {
-    v_new = (float4)(0.0f, 0.0f, 0.0f, 1.0f);                                   // Constraining velocity...
+    v_new = -v_new;                                                             // Constraining velocity...
   }
 
   // FIXING PROJECTIVE SPACE:

@@ -20,17 +20,17 @@ layout(std430, binding = 1) buffer voxel_position
   vec4 position_SSBO[];                                                         // Voxel position SSBO.
 };
 
-layout(std430, binding = 8) buffer voxel_resting
+layout(std430, binding = 6) buffer voxel_resting
 {
   float resting_SSBO[];                                                         // Voxel resting SSBO.
 };
 
-layout(std430, binding = 11) buffer voxel_central
+layout(std430, binding = 7) buffer voxel_central
 {
   int central_SSBO[];                                                           // Voxel central SSBO.
 };
 
-layout(std430, binding = 12) buffer voxel_nearest
+layout(std430, binding = 8) buffer voxel_nearest
 {
   int nearest_SSBO[];                                                           // Voxel nearest SSBO.
 };

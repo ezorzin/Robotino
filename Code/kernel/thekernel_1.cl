@@ -2,20 +2,15 @@
 
 __kernel void thekernel(__global float4*    color,                              // Color.
                         __global float4*    position,                           // Position.
-                        __global float4*    position_int,                       // Position (intermediate).
                         __global float4*    velocity,                           // Velocity.
-                        __global float4*    velocity_int,                       // Velocity (intermediate).
                         __global float4*    acceleration,                       // Acceleration.
-                        __global float4*    gravity,                            // Gravity.
-                        __global float*     stiffness,                          // Stiffness.
+                        __global float4*    position_int,                       // Position (intermediate).
+                        __global float4*    velocity_int,                       // Velocity (intermediate).
                         __global float*     resting,                            // Resting distance.
-                        __global float*     friction,                           // Friction.
-                        __global float*     mass,                               // Mass.
                         __global int*       central,                            // Node.
                         __global int*       nearest,                            // Neighbour.
                         __global int*       offset,                             // Offset.
-                        __global int*       freedom,                            // Freedom flag.
-                        __global float*     dt_simulation)                      // Simulation time step.
+                        __global float*     parameter)                          // Parameter array.
 {
   ////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////// INDEXES ///////////////////////////////////
@@ -29,14 +24,13 @@ __kernel void thekernel(__global float4*    color,                              
   float4        v                 = velocity[i];                                // Central node velocity.
   float4        a                 = acceleration[i];                            // Central node acceleration.
   float4        p_new             = (float4)(0.0f, 0.0f, 0.0f, 1.0f);           // Central node position. 
-  float         fr                = freedom[i];                                 // Central node freedom flag.
-  float         dt                = dt_simulation[0];                           // Simulation time step [s].
+  float         dt                = parameter[4];                               // Simulation time step [s].
 
-  // APPLYING FREEDOM CONSTRAINTS:
-  if (fr == 0)
+  // APPLYING GROUND CONSTRAINTS:
+  if (p.z <= 0.0f)
   {
-    v = (float4)(0.0f, 0.0f, 0.0f, 1.0f);                                       // Constraining velocity...
-    a = (float4)(0.0f, 0.0f, 0.0f, 1.0f);                                       // Constraining acceleration...
+    v = -v;                                                                     // Constraining velocity...
+    a = -a;                                                                     // Constraining acceleration...
   }
   
   // COMPUTING NEW POSITION:
