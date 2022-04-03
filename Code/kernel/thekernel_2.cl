@@ -110,24 +110,20 @@ __kernel void thekernel(__global float4*    color,                              
   // COMPUTING NEW ACCELERATION:
   a_new = F_new/m;                                                              // Computing acceleration...
 
-  // APPLYING GROUND CONSTRAINTS:
-  if (p_int.z <= 0.0f)
-  {
-    a_new = (float4)(0.0f, 0.0f, 0.0f ,1.0f);                                   // Constraining acceleration...
-  }
-
   // COMPUTING NEW VELOCITY:
   v_new = v + 0.5f*(a + a_new)*dt;                                              // Computing velocity...
-
-  // APPLYING GROUND CONSTRAINTS:
-  if (p_int.z <= 0.0f)
-  {
-    v_new = (float4)(0.0f, 0.0f, 0.0f ,1.0f);                                   // Constraining velocity...
-  }
 
   // FIXING PROJECTIVE SPACE:
   v_new.w = 1.0f;                                                               // Adjusting projective space...
   a_new.w = 1.0f;                                                               // Adjusting projective space...
+
+  // APPLYING GROUND CONSTRAINTS:
+  if (p_int.z <= 0.0f)
+  {
+    p_int.z = -p_int.z;
+    v_new.z = -v_new.z;
+    a_new.z = -a_new.z;
+  }
 
   // UPDATING KINEMATICS:
   position[n] = p_int;                                                          // Updating position [m]...
